@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全国主要城市天气信息</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .update-time {
+            text-align: right;
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        th:first-child, th:nth-child(2),
+        td:first-child, td:nth-child(2) {
+            text-align: left;
+        }
+        th:first-child {
+            width: 180px;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        .temp-cold {
+            background-color: #e6f3ff;
+        }
+        .temp-comfortable {
+            background-color: #e6ffe6;
+        }
+        .temp-hot {
+            background-color: #ffe6e6;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>全国主要城市天气信息</h1>
+        <div class="update-time" id="updateTime"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>省份</th>
+                    <th>城市</th>
+                    <th>天气图标</th>
+                    <th>天气</th>
+                    <th>温度</th>
+                    <th>风向</th>
+                    <th>风力</th>
+                    <th>湿度</th>
+                </tr>
+            </thead>
+            <tbody id="weatherData">
+                <tr>
+                    <td colspan="6" class="loading">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_KEY = '55cdad7d3ab1989cd17ab7e85e28725a';
+        const CITIES = {
+            "110000": {province: "北京市", city: "北京市"},
+            "310000": {province: "上海市", city: "上海市"},
+            "120000": {province: "天津市", city: "天津市"},
+            "500000": {province: "重庆市", city: "重庆市"},
+            "130100": {province: "河北省", city: "石家庄市"},
+            "140100": {province: "山西省", city: "太原市"},
+            "150100": {province: "内蒙古自治区", city: "呼和浩特市"},
+            "210100": {province: "辽宁省", city: "沈阳市"},
+            "220100": {province: "吉林省", city: "长春市"},
+            "230100": {province: "黑龙江省", city: "哈尔滨市"},
+            "320100": {province: "江苏省", city: "南京市"},
+            "330100": {province: "浙江省", city: "杭州市"},
+            "340100": {province: "安徽省", city: "合肥市"},
+            "350100": {province: "福建省", city: "福州市"},
+            "360100": {province: "江西省", city: "南昌市"},
+            "370100": {province: "山东省", city: "济南市"},
+            "410100": {province: "河南省", city: "郑州市"},
+            "420100": {province: "湖北省", city: "武汉市"},
+            "430100": {province: "湖南省", city: "长沙市"},
+            "440100": {province: "广东省", city: "广州市"},
+            "450100": {province: "广西壮族自治区", city: "南宁市"},
+            "460100": {province: "海南省", city: "海口市"},
+            "510100": {province: "四川省", city: "成都市"},
+            "520100": {province: "贵州省", city: "贵阳市"},
+            "530100": {province: "云南省", city: "昆明市"},
+            "540100": {province: "西藏自治区", city: "拉萨市"},
+            "610100": {province: "陕西省", city: "西安市"},
+            "620100": {province: "甘肃省", city: "兰州市"},
+            "630100": {province: "青海省", city: "西宁市"},
+            "640100": {province: "宁夏回族自治区", city: "银川市"},
+            "650100": {province: "新疆维吾尔自治区", city: "乌鲁木齐市"}
+        };
+
+        function getWeatherIcon(weather) {
+            const weatherMap = {
+                // 晴好天气
+                '晴': 'sun',
+                '晴天': 'sun',
+                // 多云天气
+                '多云': 'cloud-sun',
+                '少云': 'cloud-sun',
+                '晴间多云': 'cloud-sun',
+                // 阴天
+                '阴': 'cloud',
+                '阴天': 'cloud',
+                // 雨天类型
+                '小雨': 'cloud-rain',
+                '中雨': 'cloud-showers-heavy',
+                '大雨': 'cloud-showers-heavy',
+                '暴雨': 'cloud-showers-heavy',
+                '大暴雨': 'cloud-showers-heavy',
+                '特大暴雨': 'cloud-showers-heavy',
+                '阵雨': 'cloud-rain',
+                '雷阵雨': 'cloud-bolt',
+                '雷雨': 'cloud-bolt',
+                '雨': 'cloud-rain',
+                // 雪天类型
+                '小雪': 'snowflake',
+                '中雪': 'snowflake',
+                '大雪': 'snowflake',
+                '暴雪': 'snowflake',
+                '阵雪': 'snowflake',
+                '雪': 'snowflake',
+                // 雨雪混合类型
+                '雨夹雪': 'cloud-sleet',
+                '雪雨': 'cloud-sleet',
+                '冻雨': 'cloud-sleet',
+                // 特殊天气
+                '冰雹': 'cloud-hail',
+                '雾': 'smog',
+                '霾': 'smog',
+                '雾霾': 'smog',
+                '沙尘暴': 'wind',
+                '浮尘': 'wind',
+                '扬沙': 'wind',
+                '强沙尘暴': 'wind',
+                '龙卷风': 'tornado',
+                // 组合天气
+                '雷阵雨伴有冰雹': 'cloud-bolt',
+                '雨雪天气': 'cloud-sleet',
+                '雷雨冰雹': 'cloud-bolt'
+            };
+            
+            // 如果直接匹配不到，尝试模糊匹配
+            if (!weatherMap[weather]) {
+                // 包含关键字的匹配
+                if (weather.includes('雷')) return 'cloud-bolt';
+                if (weather.includes('雨')) return 'cloud-rain';
+                if (weather.includes('雪')) return 'snowflake';
+                if (weather.includes('云')) return 'cloud-sun';
+                if (weather.includes('晴')) return 'sun';
+                if (weather.includes('阴')) return 'cloud';
+                if (weather.includes('雾') || weather.includes('霾')) return 'smog';
+                if (weather.includes('沙') || weather.includes('尘')) return 'wind';
+                if (weather.includes('冰雹')) return 'cloud-hail';
+            }
+            
+            return weatherMap[weather] || 'question';
+        }
+
+        async function getWeatherData(cityCode) {
+            const url = `https://restapi.amap.com/v3/weather/weatherInfo?key=${API_KEY}&city=${cityCode}&extensions=base`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === '1' && data.lives && data.lives.length > 0) {
+                    return data.lives[0];
+                }
+                throw new Error('获取数据失败');
+            } catch (error) {
+                console.error(`获取${CITIES[cityCode]}天气数据失败:`, error);
+                return null;
+            }
+        }
+
+        function getWindDirectionIcon(direction) {
+            if (!direction || direction === '无风向') return 'minus';
+            
+            // 标准化风向字符串
+            function normalizeDirection(dir) {
+                // 移除"风"和"方"后缀
+                dir = dir.replace(/(风|方)$/, '');
+                
+                // 处理带有"偏"字的风向
+                const biasMatch = dir.match(/(.*?)偏(.*)/);  
+                if (biasMatch) {
+                    const [_, main, sub] = biasMatch;
+                    const combination = main + sub;
+                    if (['北东', '东北'].includes(combination)) return '东北';
+                    if (['北西', '西北'].includes(combination)) return '西北';
+                    if (['东南', '南东'].includes(combination)) return '东南';
+                    if (['西南', '南西'].includes(combination)) return '西南';
+                }
+                return dir;
+            }
+
+            // 标准化输入的风向
+            const normalizedDirection = normalizeDirection(direction);
+
+            const directionMap = {
+                '北': 'arrow-down',
+                '东北': 'arrow-down-right',
+                '东': 'arrow-right',
+                '东南': 'arrow-up-right',
+                '南': 'arrow-up',
+                '西南': 'arrow-up-left',
+                '西': 'arrow-left',
+                '西北': 'arrow-down-left',
+                '无风向': 'minus',
+                'N': 'arrow-down',
+                'NE': 'arrow-down-right',
+                'E': 'arrow-right',
+                'SE': 'arrow-up-right',
+                'S': 'arrow-up',
+                'SW': 'arrow-up-left',
+                'W': 'arrow-left',
+                'NW': 'arrow-down-left'
+            };
+            return directionMap[normalizedDirection] || 'minus';
+        }
+
+        async function updateWeatherTable() {
+            const tbody = document.getElementById('weatherData');
+            const updateTimeElement = document.getElementById('updateTime');
+            
+            // 更新时间显示
+            const now = new Date();
+            updateTimeElement.textContent = `最后更新时间：${now.toLocaleString()}`;
+
+            // 清空现有数据
+            tbody.innerHTML = '';
+
+            // 获取所有城市的天气数据
+            for (const [cityCode, cityName] of Object.entries(CITIES)) {
+                const weatherData = await getWeatherData(cityCode);
+                const row = document.createElement('tr');
+                
+                if (weatherData) {
+                    row.innerHTML = `
+                        <td>${cityName.province}</td>
+                        <td>${cityName.city}</td>
+                        <td><i class="fas fa-${getWeatherIcon(weatherData.weather)}"></i></td>
+                        <td>${weatherData.weather || '-'}</td>
+                        <td>${weatherData.temperature ? weatherData.temperature + '℃' : '-'}</td>
+                        <td>${weatherData.winddirection || '-'}</td>
+                        <td>${weatherData.windpower ? weatherData.windpower + '级' : '-'}</td>
+                        <td>${weatherData.humidity ? weatherData.humidity + '%' : '-'}</td>
+                    `;
+                row.className = getTemperatureClass(weatherData.temperature);
+                } else {
+                    row.innerHTML = `
+                        <td>${cityName.province}</td>
+                        <td>${cityName.city}</td>
+                        <td colspan="6">获取数据失败</td>
+                    `;
+                }
+                
+                tbody.appendChild(row);
+            }
+        }
+
+        // 页面加载时立即更新一次
+        updateWeatherTable();
+
+        // 每分钟更新一次数据
+        setInterval(updateWeatherTable, 60000);
+
+        // 根据温度值返回对应的CSS类名
+        function getTemperatureClass(temperature) {
+            if (!temperature) return '';
+            const temp = parseInt(temperature);
+            if (temp <= 10) return 'temp-cold';
+            if (temp >= 30) return 'temp-hot';
+            return 'temp-comfortable';
+        }
+
+        function evaluateTravelSuggestion(weather, temperature, windpower, humidity) {
+            // 不适宜出行的天气类型
+            const badWeather = ['暴雨', '大暴雨', '特大暴雨', '暴雪', '大雪', '雷暴', '龙卷风', '沙尘暴', '强沙尘暴'];
+            // 较不适宜出行的天气类型
+            const moderateWeather = ['中雨', '大雨', '雷阵雨', '中雪', '雨夹雪', '冻雨', '浮尘', '扬沙', '雾', '霾'];
+            
+            // 判断天气状况
+            if (badWeather.some(bad => weather.includes(bad))) {
+                return { text: '不宜出行', class: 'suggestion-unsuitable' };
+            } else if (moderateWeather.some(moderate => weather.includes(moderate))) {
+                return { text: '较不宜出行', class: 'suggestion-moderate' };
+            }
+            
+            // 判断温度
+            const temp = parseFloat(temperature);
+            if (temp < -10 || temp > 35) {
+                return { text: '不宜出行', class: 'suggestion-unsuitable' };
+            } else if (temp < 0 || temp > 30) {
+                return { text: '较不宜出行', class: 'suggestion-moderate' };
+            }
+            
+            // 判断风力
+            const windLevel = parseInt(windpower.replace(/[^0-9]/g, ''));
+            if (windLevel >= 7) {
+                return { text: '不宜出行', class: 'suggestion-unsuitable' };
+            } else if (windLevel >= 5) {
+                return { text: '较不宜出行', class: 'suggestion-moderate' };
+            }
+            
+            // 判断湿度
+            const hum = parseFloat(humidity);
+            if (hum > 85 || hum < 20) {
+                return { text: '较不宜出行', class: 'suggestion-moderate' };
+            }
+            
+            return { text: '适宜出行', class: 'suggestion-suitable' };
+        }
+    </script>
+</body>
+</html>
