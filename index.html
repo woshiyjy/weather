@@ -133,70 +133,30 @@
         };
 
         function getWeatherIcon(weather) {
-            const weatherMap = {
-                // 晴好天气
-                '晴': 'sun',
-                '晴天': 'sun',
-                // 多云天气
-                '多云': 'cloud-sun',
-                '少云': 'cloud-sun',
-                '晴间多云': 'cloud-sun',
-                // 阴天
-                '阴': 'cloud',
-                '阴天': 'cloud',
-                // 雨天类型
-                '小雨': 'cloud-rain',
-                '中雨': 'cloud-showers-heavy',
-                '大雨': 'cloud-showers-heavy',
-                '暴雨': 'cloud-showers-heavy',
-                '大暴雨': 'cloud-showers-heavy',
-                '特大暴雨': 'cloud-showers-heavy',
-                '阵雨': 'cloud-rain',
-                '雷阵雨': 'cloud-bolt',
-                '雷雨': 'cloud-bolt',
-                '雨': 'cloud-rain',
-                // 雪天类型
-                '小雪': 'snowflake',
-                '中雪': 'snowflake',
-                '大雪': 'snowflake',
-                '暴雪': 'snowflake',
-                '阵雪': 'snowflake',
-                '雪': 'snowflake',
-                // 雨雪混合类型
-                '雨夹雪': 'cloud-sleet',
-                '雪雨': 'cloud-sleet',
-                '冻雨': 'cloud-sleet',
-                // 特殊天气
-                '冰雹': 'cloud-hail',
-                '雾': 'smog',
-                '霾': 'smog',
-                '雾霾': 'smog',
-                '沙尘暴': 'wind',
-                '浮尘': 'wind',
-                '扬沙': 'wind',
-                '强沙尘暴': 'wind',
-                '龙卷风': 'tornado',
-                // 组合天气
-                '雷阵雨伴有冰雹': 'cloud-bolt',
-                '雨雪天气': 'cloud-sleet',
-                '雷雨冰雹': 'cloud-bolt'
-            };
-            
-            // 如果直接匹配不到，尝试模糊匹配
-            if (!weatherMap[weather]) {
-                // 包含关键字的匹配
-                if (weather.includes('雷')) return 'cloud-bolt';
-                if (weather.includes('雨')) return 'cloud-rain';
-                if (weather.includes('雪')) return 'snowflake';
-                if (weather.includes('云')) return 'cloud-sun';
-                if (weather.includes('晴')) return 'sun';
-                if (weather.includes('阴')) return 'cloud';
-                if (weather.includes('雾') || weather.includes('霾')) return 'smog';
-                if (weather.includes('沙') || weather.includes('尘')) return 'wind';
-                if (weather.includes('冰雹')) return 'cloud-hail';
+            // 天气类型映射
+            const weatherTypes = [
+                { type: '雷', icon: 'cloud-bolt' },
+                { type: '暴雨|大雨|中雨', icon: 'cloud-showers-heavy' },
+                { type: '小雨|阵雨|雨', icon: 'cloud-rain' },
+                { type: '雪', icon: 'snowflake' },
+                { type: '雨夹雪|雪雨|冻雨', icon: 'cloud-sleet' },
+                { type: '多云|少云|晴间多云', icon: 'cloud-sun' },
+                { type: '晴', icon: 'sun' },
+                { type: '阴', icon: 'cloud' },
+                { type: '雾|霾', icon: 'smog' },
+                { type: '沙尘暴|浮尘|扬沙|尘', icon: 'wind' },
+                { type: '冰雹', icon: 'cloud-hail' },
+                { type: '龙卷风', icon: 'tornado' }
+            ];
+
+            // 使用正则表达式匹配天气类型
+            for (const { type, icon } of weatherTypes) {
+                if (new RegExp(type).test(weather)) {
+                    return icon;
+                }
             }
             
-            return weatherMap[weather] || 'question';
+            return 'question';
         }
 
         async function getWeatherData(cityCode) {
@@ -209,55 +169,25 @@
                 }
                 throw new Error('获取数据失败');
             } catch (error) {
-                console.error(`获取${CITIES[cityCode]}天气数据失败:`, error);
+                console.error(`获取${CITIES[cityCode].city}天气数据失败:`, error);
                 return null;
             }
         }
-
-        function getWindDirectionIcon(direction) {
-            if (!direction || direction === '无风向') return 'minus';
+        function normalizeWindDirection(direction) {
+            if (!direction) return '无风向';
             
-            // 标准化风向字符串
-            function normalizeDirection(dir) {
-                // 移除"风"和"方"后缀
-                dir = dir.replace(/(风|方)$/, '');
-                
-                // 处理带有"偏"字的风向
-                const biasMatch = dir.match(/(.*?)偏(.*)/);  
-                if (biasMatch) {
-                    const [_, main, sub] = biasMatch;
-                    const combination = main + sub;
-                    if (['北东', '东北'].includes(combination)) return '东北';
-                    if (['北西', '西北'].includes(combination)) return '西北';
-                    if (['东南', '南东'].includes(combination)) return '东南';
-                    if (['西南', '南西'].includes(combination)) return '西南';
-                }
-                return dir;
+            let dir = direction;
+            // 移除"风"或"方"字的风向
+            const biasMatch = dir.match(/(.*?)偏(.*)/);  
+            if (biasMatch) {
+                const [_, main, sub] = biasMatch;
+                const combination = main + sub;
+                if (['北东', '东北'].includes(combination)) return '东北';
+                if (['北西', '西北'].includes(combination)) return '西北';
+                if (['东南', '南东'].includes(combination)) return '东南';
+                if (['西南', '南西'].includes(combination)) return '西南';
             }
-
-            // 标准化输入的风向
-            const normalizedDirection = normalizeDirection(direction);
-
-            const directionMap = {
-                '北': 'arrow-down',
-                '东北': 'arrow-down-right',
-                '东': 'arrow-right',
-                '东南': 'arrow-up-right',
-                '南': 'arrow-up',
-                '西南': 'arrow-up-left',
-                '西': 'arrow-left',
-                '西北': 'arrow-down-left',
-                '无风向': 'minus',
-                'N': 'arrow-down',
-                'NE': 'arrow-down-right',
-                'E': 'arrow-right',
-                'SE': 'arrow-up-right',
-                'S': 'arrow-up',
-                'SW': 'arrow-up-left',
-                'W': 'arrow-left',
-                'NW': 'arrow-down-left'
-            };
-            return directionMap[normalizedDirection] || 'minus';
+            return dir;
         }
 
         async function updateWeatherTable() {
@@ -303,8 +233,8 @@
         // 页面加载时立即更新一次
         updateWeatherTable();
 
-        // 每分钟更新一次数据
-        setInterval(updateWeatherTable, 60000);
+        // 每5分钟更新一次数据
+        setInterval(updateWeatherTable, 300000);
 
         // 根据温度值返回对应的CSS类名
         function getTemperatureClass(temperature) {
@@ -315,43 +245,7 @@
             return 'temp-comfortable';
         }
 
-        function evaluateTravelSuggestion(weather, temperature, windpower, humidity) {
-            // 不适宜出行的天气类型
-            const badWeather = ['暴雨', '大暴雨', '特大暴雨', '暴雪', '大雪', '雷暴', '龙卷风', '沙尘暴', '强沙尘暴'];
-            // 较不适宜出行的天气类型
-            const moderateWeather = ['中雨', '大雨', '雷阵雨', '中雪', '雨夹雪', '冻雨', '浮尘', '扬沙', '雾', '霾'];
-            
-            // 判断天气状况
-            if (badWeather.some(bad => weather.includes(bad))) {
-                return { text: '不宜出行', class: 'suggestion-unsuitable' };
-            } else if (moderateWeather.some(moderate => weather.includes(moderate))) {
-                return { text: '较不宜出行', class: 'suggestion-moderate' };
-            }
-            
-            // 判断温度
-            const temp = parseFloat(temperature);
-            if (temp < -10 || temp > 35) {
-                return { text: '不宜出行', class: 'suggestion-unsuitable' };
-            } else if (temp < 0 || temp > 30) {
-                return { text: '较不宜出行', class: 'suggestion-moderate' };
-            }
-            
-            // 判断风力
-            const windLevel = parseInt(windpower.replace(/[^0-9]/g, ''));
-            if (windLevel >= 7) {
-                return { text: '不宜出行', class: 'suggestion-unsuitable' };
-            } else if (windLevel >= 5) {
-                return { text: '较不宜出行', class: 'suggestion-moderate' };
-            }
-            
-            // 判断湿度
-            const hum = parseFloat(humidity);
-            if (hum > 85 || hum < 20) {
-                return { text: '较不宜出行', class: 'suggestion-moderate' };
-            }
-            
-            return { text: '适宜出行', class: 'suggestion-suitable' };
-        }
+
     </script>
 </body>
 </html>
